@@ -19,10 +19,10 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .status-up {
+        .status-UP {
             color: green;
         }
-        .status-down {
+        .status-DOWN {
             color: red;
         }
         .refresh-btn {
@@ -45,41 +45,24 @@
     <div class="container">
         <div class="header">
             <h1>Network Monitor Dashboard</h1>
-            <button class="refresh-btn" onclick="refreshStatus()">Refresh</button>
+            <button class="refresh-btn" onclick="location.reload()">Refresh</button>
         </div>
-        <div id="status-container">
-            <!-- Status cards will be inserted here -->
+        
+        {% for ip, data in ips.items() %}
+        <div class="status-card">
+            <h2>IP: {{ ip }}</h2>
+            <p>Status: <span class="status-{{ data.status }}">{{ data.status }}</span></p>
+            <p>Response Time: {{ data.response_time }}</p>
+            <p>Last Check: {{ data.last_check }}</p>
         </div>
+        {% endfor %}
     </div>
 
     <script>
-        function refreshStatus() {
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('status-container');
-                    container.innerHTML = '';
-                    
-                    for (const [ip, info] of Object.entries(data)) {
-                        const card = document.createElement('div');
-                        card.className = 'status-card';
-                        card.innerHTML = `
-                            <h2>IP: ${ip}</h2>
-                            <p class="status-${info.status}">Status: ${info.status.toUpperCase()}</p>
-                            <p>Response Time: ${info.response_time ? info.response_time + 'ms' : 'N/A'}</p>
-                            <p>Last Check: ${info.last_check}</p>
-                        `;
-                        container.appendChild(card);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        // Initial load
-        refreshStatus();
-        
         // Auto refresh every 60 seconds
-        setInterval(refreshStatus, 60000);
+        setTimeout(() => {
+            location.reload();
+        }, 60000);
     </script>
 </body>
 </html>
