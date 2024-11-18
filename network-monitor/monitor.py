@@ -10,9 +10,19 @@ def check_host(ip, retry_count=3):
     """Ping host and return response time or None if unreachable"""
     for _ in range(retry_count):
         try:
+            # First try ICMP ping
             response_time = ping3.ping(ip)
             if response_time is not None:
                 return response_time
+                
+            # If ICMP fails, try HTTP check for web servers
+            try:
+                response = requests.get(f"http://{ip}", timeout=5)
+                if response.status_code == 200:
+                    return 0.001  # Return nominal value for successful HTTP connection
+            except:
+                pass
+                
         except Exception:
             continue
     return None
