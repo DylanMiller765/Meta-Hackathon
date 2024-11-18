@@ -40,63 +40,51 @@ def verify_with_peers(ip):
         print(f"Peer verification failed: {e}")
         return False, "Peer verification failed"
 
-def send_alert(ip, status, response_time=None, additional_info=None):
-    """Send email alert for host status change"""
+def send_alert(ip, message):
+    """Send alert email"""
     try:
+        msg = MIMEText(f"Host {ip} is experiencing issues.\n{message}")
+        msg['Subject'] = f"Network Alert: {ip}"
+        msg['From'] = SMTP_EMAIL
+        msg['To'] = ', '.join(ALERT_EMAILS)
+
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            
-            for recipient in ALERT_EMAILS:
-                # Create a new message for each recipient
-                body = f"""
-                Host: {ip}
-                Status: {status}
-                Time: {datetime.now()}
-                Response Time: {response_time if response_time else 'N/A'} ms
-                Additional Info: {additional_info if additional_info else 'N/A'}
-                """
-                
-                msg = MIMEText(body)
-                msg['Subject'] = f"Network Alert - {ip} is {status}"
-                msg['From'] = SMTP_EMAIL
-                msg['To'] = recipient
-                server.send_message(msg)
-                
+            server.send_message(msg)
+            print(f"Alert sent for {ip}")
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Failed to send alert: {e}")
 
 def monitor_network():
     """Main monitoring loop"""
-    print("Starting network monitor...")
     failure_counts = {ip: 0 for ip in TARGET_IPS}
     
     while True:
         for ip in TARGET_IPS:
             response_time = check_host(ip)
-            current_status = response_time is not None
             
-            if not current_status:
+            if response_time is None:
                 failure_counts[ip] += 1
                 if failure_counts[ip] >= FAILURE_THRESHOLD:
                     # Verify with peers before sending alert
                     peer_status, message = verify_with_peers(ip)
                     if not peer_status:
-                        send_alert(
-                            ip=ip,
-                            status="DOWN",
-                            response_time=None,
-                            additional_info=message
-                        )
+                        send_alert(ip, message)
+                        failure_counts[ip] = 0  # Reset after alert
             else:
-                # Reset failure count if host is reachable
-                if failure_counts[ip] >= FAILURE_THRESHOLD:
-                    send_alert(
-                        ip=ip,
-                        status="UP",
-                        response_time=response_time,
-                        additional_info="Host is back online"
-                    )
-                failure_counts[ip] = 0
+                failure_counts[ip] = 0  # Reset on successful ping
                 
+            print(f"{datetime.now()}: {ip} - {'UP' if response_time else 'DOWN'}")
+        
         time.sleep(CHECK_INTERVAL)
+
+def register_with_central_server():
+    try:
+        response = requests.post(
+            "https://your-app-name.onrender.com/register",
+            json={"id": "monitor-1"}  # Unique ID for each monitor
+        )
+        return response.json()
+    except Exception as e:
+        print(f"Failed to register: {e}")

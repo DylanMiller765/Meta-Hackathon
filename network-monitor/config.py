@@ -16,11 +16,12 @@ ALERT_EMAILS = [
 CHECK_INTERVAL = 3600  # 1 hour in seconds
 
 PEER_MONITORS = [
+    "meta-hackathon.onrender.com",  # Your central server
     "172.25.72.110:5000",
     "172.17.33.245:5000"
 ]
 
-FAILURE_THRESHOLD = 3  # Number of consecutive failures before peer verification
-
 # Optional: Add your own machine's monitoring API port
 MONITOR_PORT = 5000
+
+FAILURE_THRESHOLD = 3  # Number of consecutive failures before alerting
