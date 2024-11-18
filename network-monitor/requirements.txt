@@ -1,5 +1,7 @@
-
 ping3==4.0.3
+flask==2.0.1
+requests==2.26.0
+werkzeug==2.0.1
 
 
 
