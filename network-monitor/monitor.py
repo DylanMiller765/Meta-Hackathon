@@ -8,18 +8,37 @@ import requests
 
 def check_host(ip, retry_count=3):
     """Ping host and return response time or None if unreachable"""
+    # Check if IP is private/local
+    is_private = any([
+        ip.startswith('192.168.'),
+        ip.startswith('10.'),
+        ip.startswith('172.16.'), ip.startswith('172.17.'),
+        ip.startswith('172.18.'), ip.startswith('172.19.'),
+        ip.startswith('172.20.'), ip.startswith('172.21.'),
+        ip.startswith('172.22.'), ip.startswith('172.23.'),
+        ip.startswith('172.24.'), ip.startswith('172.25.'),
+        ip.startswith('172.26.'), ip.startswith('172.27.'),
+        ip.startswith('172.28.'), ip.startswith('172.29.'),
+        ip.startswith('172.30.'), ip.startswith('172.31.')
+    ])
+
+    if is_private:
+        # For private IPs, try to get status from peer monitors first
+        reachable, _ = verify_with_peers(ip)
+        if reachable:
+            return 0.001  # Nominal value if reachable through peers
+
+    # If not private or peer check failed, try direct check
     for _ in range(retry_count):
         try:
-            # First try ICMP ping
             response_time = ping3.ping(ip)
             if response_time is not None:
                 return response_time
                 
-            # If ICMP fails, try HTTP check for web servers
             try:
                 response = requests.get(f"http://{ip}", timeout=5)
                 if response.status_code == 200:
-                    return 0.001  # Return nominal value for successful HTTP connection
+                    return 0.001
             except:
                 pass
                 
@@ -30,21 +49,19 @@ def check_host(ip, retry_count=3):
 def verify_with_peers(ip):
     """Verify host status with peer monitors"""
     try:
-        # Try to contact peer monitors to verify the host status
         peer_results = []
         for peer in PEER_MONITORS:
-            try:
-                # Using requests to check peer monitor API
-                response = requests.get(f"http://{peer}/check/{ip}", timeout=5)
-                if response.status_code == 200:
-                    peer_results.append(response.json()['reachable'])
-            except Exception as e:
-                print(f"Failed to contact peer {peer}: {e}")
-                continue
+            if peer != "meta-hackathon.onrender.com":  # Skip Render server for local IPs
+                try:
+                    response = requests.get(f"http://{peer}/check/{ip}", timeout=5)
+                    if response.status_code == 200:
+                        peer_results.append(response.json()['reachable'])
+                except Exception as e:
+                    print(f"Failed to contact peer {peer}: {e}")
+                    continue
         
-        # If any peer can reach the host, it's likely a local network issue
         if peer_results and any(peer_results):
-            return True, "Local network issue detected"
+            return True, "Host is up (verified by peers)"
         return False, "Host is down (verified by peers)"
     except Exception as e:
         print(f"Peer verification failed: {e}")
